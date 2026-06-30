@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终端管理系统 V5.17 - CF存储板</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #eef2ff;
+            --success: #2ec4b6;
+            --warning: #ff9f1c;
+            --danger: #e71d36;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --light-gray: #f1f5f9;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--light-gray);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            color: var(--dark);
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+            z-index: 10;
+            height: 100vh;
+            overflow-y: hidden;
+        }
+		.sidebar * {
+    max-width: 100%;
+}
+
+        .logo-area {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .logo-area h2 { margin: 0; font-size: 20px; color: var(--primary); font-weight: 800; letter-spacing: -0.5px; }
+        .logo-area span { font-size: 12px; color: var(--gray); background: var(--primary-light); padding: 2px 8px; border-radius: 4px; }
+
+/* ===== 轻量时钟（新版UI） ===== */
+.clock-card {
+    background: linear-gradient(135deg, #1f3333, #112227);
+    border-radius: 12px;
+    padding: 2px 3px;
+    text-align: center;
+    color: #fff;
+    margin-bottom: 18px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 左侧小色条 */
+.clock-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #3b82f6, #22c55e);
+}
+
+/* 时间（重点缩小 + 更精致） */
+#clockTime {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;     /* 关键：变小 */
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin: 2px 0;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+/* 日期 */
+#clockDate {
+    font-size: 11px;
+    opacity: 0.75;
+    color: #cbd5e1;
+    margin-top: 2px;
+}
+
+        .sync-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+        .sync-status {
+            background: var(--light-gray);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        .sync-status.syncing { background: #fef3c7; color: #92400e; }
+        .sync-status.synced { background: #dcfce7; color: #166534; }
+        .sync-status.error { background: #fee2e2; color: #991b1b; }
+        .sync-dot {
+            width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+        }
+        .sync-dot.syncing { background: var(--warning); animation: pulse 1s infinite; }
+        .sync-dot.synced { background: var(--success); }
+        .sync-dot.error { background: var(--danger); }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .btn {
+            border: none; padding: 10px 16px; border-radius: 10px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 6px; color: white;
+            flex-shrink: 0;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3); }
+        .btn-primary:hover { background: #3651d6; }
+        .btn-success { background: var(--success); box-shadow: 0 4px 12px rgba(46, 196, 182, 0.3); }
+        .btn-success:hover { background: #27a79b; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); }
+        .btn-outline { background: white; border: 1px solid var(--border); color: var(--gray); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .section-title {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--gray); font-weight: 700; margin: 20px 0 10px; display: flex; align-items: center;
+        }
+        .section-title::before {
+            content: ''; display: inline-block; width: 4px; height: 14px;
+            background: var(--primary); margin-right: 8px; border-radius: 2px;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .input-row { display: flex; gap: 10px; }
+        
+        input[type="date"], input[type="time"], input[type="password"] {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafafa;
+        }
+        input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-light); }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+}
+        .backup-time { width: 100%; padding: 8px 4px; font-size: 13px; text-align: center; }
+
+        .main-content {
+            flex: 1; display: flex; flex-direction: column; padding: 30px; overflow: hidden;
+        }
+
+        .header-bar {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+        }
+        .mode-badge {
+            background: white; padding: 8px 16px; border-radius: 20px; font-weight: 600;
+            color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 8px;
+        }
+
+        .table-wrapper {
+            background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            flex: 1; overflow: auto; border: 1px solid var(--border);
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 900px; }
+        thead { background: #f8fafc; position: sticky; top: 0; z-index: 5; }
+        th { padding: 16px; text-align: left; font-weight: 600; color: var(--gray); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--dark); }
+        tr:hover td { background: #fafafa; }
+
+        .time-input {
+            width: 90px; padding: 6px; border: 1px solid var(--border);
+            border-radius: 6px; text-align: center; font-family: monospace; font-size: 13px;
+        }
+        .time-input:focus { border-color: var(--primary); }
+        .time-input.pasted { animation: highlight 0.3s ease; }
+        @keyframes highlight { 0% { background: #fef08a; } 100% { background: transparent; } }
+
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-err { background: #fee2e2; color: #991b1b; }
+        .status-warn { background: #fef3c7; color: #92400e; }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100; display: none;
+        }
+        .modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 30px; border-radius: 16px; width: 400px; z-index: 101;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2); display: none;
+        }
+        .modal h3 { margin-top: 0; }
+        .modal .form-group { margin: 20px 0; }
+        .modal .form-group label { display: block; font-size: 13px; color: var(--gray); margin-bottom: 8px; }
+        .modal .form-group input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+        .modal .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .modal .btn-group .btn { flex: 1; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .loading {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 20px 40px; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 9999; display: none;
+        }
+        .loading.show { display: block; }
+        .loading-spinner {
+            width: 24px; height: 24px; border: 3px solid var(--primary-light);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* ✨ 扣分样式 */
+        .score-cell {
+            font-weight: 700;
+            text-align: center;
+            font-family: monospace;
+        }
+        .score-zero { color: var(--success); }
+        .score-low { color: var(--warning); }
+        .score-high { color: var(--danger); }
+
+        /* ✨ 月报模式切换按钮样式 */
+        .grid-3-modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+		/* ===== 冻结姓名列（稳定完整版） ===== */
+
+/* 左侧第一列（姓名） */
+table th:first-child,
+table td:first-child {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 2;
+    border-right: 1px solid #e2e8f0;
+}
+
+/* 表头第一列（姓名）——必须最高层 */
+table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: #f8fafc;
+}
+
+/* 防止 hover 盖住冻结列 */
+table tr:hover td:first-child {
+    background: #f5f5f5;
+}
+/* ===== 防止侧边栏内容溢出 ===== */
+.sidebar {
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+/* 所有输入框统一适配宽度 */
+.sidebar input,
+.sidebar select,
+.sidebar button {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* 日期选择器强制不超出 */
+.sidebar input[type="date"] {
+    width: 100%;
+}
+
+/* 两个日期一排的情况（关键修复你红框这个） */
+.date-range {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.date-range input {
+    flex: 1;
+    min-width: 0;
+}
+/* ===== 统计范围日期溢出修复（核心）===== */
+
+/* 所有日期输入统一适配 */
+.sidebar input[type="date"] {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* 统计范围那一行（关键修复） */
+.sidebar .form-group,
+.sidebar .date-group,
+.sidebar .range-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;   /* ⭐关键：允许换行 */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 每个日期输入自动缩放 */
+.sidebar .form-group input,
+.sidebar .date-group input,
+.sidebar .range-group input {
+    flex: 1;
+    min-width: 0;
+}
+table th:first-child,
+table td:first-child {
+    width: 90px;        /* 👈 关键：原来一般是120~180，这里缩小 */
+    min-width: 90px;
+    max-width: 90px;
+    padding-left: 12px;  /* 👈 顺便减少左右留白 */
+    padding-right: 8px;
+}
+table th:first-child,
+table td:first-child {
+    width: 70px;
+    min-width: 70px;
+    max-width: 70px;
+}
+    </style>
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeConfig()"></div>
+<div class="modal" id="configPop">
+    <h3>⚙️ 系统设置</h3>
+    <div class="form-group">
+        <label>管理密码</label>
+        <input type="password" id="setPwd" placeholder="输入新密码（至少4位）">
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-outline" onclick="closeConfig()">取消</button>
+        <button class="btn btn-primary" onclick="saveConfig()">保存设置</button>
+    </div>
+</div>
+
+<div class="loading" id="loading">
+    <span class="loading-spinner"></span>
+    <span id="loadingText">正在同步数据...</span>
+</div>
+
+<div class="sidebar">
+    <div class="logo-area">
+        <h2>终端管理系统</h2>
+        <span>V5.16 - 优化版</span>
+    </div>
+
+    <div class="clock-card">
+        <div id="clockTime">00:00:00</div>
+        <div id="clockDate">加载中...</div>
+    </div>
+
+    <div class="sync-container">
+        <div class="sync-status" id="syncStatus">
+            <span class="sync-dot" id="syncDot"></span>
+            <span id="syncText">检查同步状态...</span>
+        </div>
+        <button class="btn btn-success" onclick="manualSync()" id="syncBtn">
+            <span>🔄</span>
+            <span>立即同步</span>
+        </button>
+    </div>
+
+    <div class="section-title">业务日期设置</div>
+    <div class="input-group">
+        <label style="font-size:12px; color:var(--gray);">日报查询日期</label>
+        <input type="date" id="singleDate" onchange="saveSingleDate()">
+    </div>
+
+    <div class="section-title">统计范围</div>
+    <div class="input-group">
+        <div class="input-row">
+            <input type="date" id="weekStart" placeholder="开始日期" onchange="saveWeekRange()">
+            <input type="date" id="weekEnd" placeholder="结束日期" onchange="saveWeekRange()">
+        </div>
+        <div class="grid-3-modes" style="margin-top:10px;">
+            <button class="btn btn-primary" onclick="changeMode('day')" id="btnDay">📅 日报</button>
+            <button class="btn btn-outline" onclick="changeMode('week')" id="btnWeek">📊 周报</button>
+            <button class="btn btn-outline" onclick="changeMode('month')" id="btnMonth">📈 月报</button>
+        </div>
+    </div>
+
+    <div class="section-title">自动备份时间</div>
+    <div class="grid-3">
+        <input type="time" id="t1" class="backup-time" onchange="saveBackupTimes()">
+        <input type="time" id="t2" class="backup-time" onchange="saveBackupTimes()">
+        <input type="time" id="t3" class="backup-time" onchange="saveBackupTimes()">
+    </div>
+    <button class="btn btn-sm btn-outline" style="margin-top:12px;" onclick="clearBackupTimes()">🗑️ 一键清空备份时间</button>
+
+    <div style="margin-top: auto; padding-top: 20px; display:flex; flex-direction:column; gap:10px;">
+        <button class="btn btn-warning" onclick="exportData()">💾 导出本地备份</button>
+        <button class="btn btn-outline" onclick="document.getElementById('fileIn').click()">📥 恢复数据</button>
+        <input type="file" id="fileIn" style="display:none" accept=".json" onchange="importJSON(this)">
+        <button class="btn btn-outline" onclick="openConfig()">🔐 修改密码</button>
+        <button class="btn btn-danger" onclick="secureReset()">🗑️ 清空数据</button>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="header-bar">
+        <div class="mode-badge" id="modeTag">
+            <span>📅</span> 当前模式：日报录入
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-primary" onclick="sortAllRowsTimes()">
+                <span>⏱️</span>
+                <span>全员自动排序</span>
+            </button>
+            <button class="btn btn-success" onclick="exportCurrent()">📤 导出 Excel</button>
+        </div>
+    </div>
+
+    <div class="table-wrapper" id="tableContainer">
+    </div>
+</div>
+
+<script>
+    // ========== GitHub Gist 配置 ==========
+    // ================= Cloudflare KV 配置 =================
+const CF_WORKER_URL = "https://terminal-sync-api.ww554849677.workers.dev/";
+const CF_AUTH_TOKEN = "123456"; // ⚠️ 必须与你在 Worker 设置里的 AUTH_TOKEN 完全一致！
+const CF_DATA_KEY = "terminal_data_v516"; // 数据在 KV 中的键名，可以随便改
+// =====================================================
+    // ===========================================
+
+    const names = ["马永康","董玉婷","李强","杨文旭","邱卫","富亮","张晓东","程浩","李首龙","周勇","袁斌","李钉","刘本来","史犇","石皓宇","张宏业"];
+    
+    const DATA_KEY = 'terminal_data';
+    const CFG_KEY = '_config';
+    let lastBackupTime = "";
+    let localCache = null;
+    let isSyncing = false;
+    let lastSyncTime = null;
+
+    // ✨ 计算扣分：所有人都参与判定
+    function calcScore(times) {
+        const count = times.filter(t => t && t !== '-').length;
+        const missing = Math.max(0, 5 - count);
+        const score = missing * 2;
+        if (score === 0) return { score: 0, text: '0', class: 'score-zero' };
+        return { score: -score, text: `-${score}`, class: score >= 6 ? 'score-high' : 'score-low' };
+    }
+
+    // ✨ 获取月份范围
+    function getMonthRange(year, month) {
+        const firstDay = new Date(year, month - 1, 1);
+        const lastDay = new Date(year, month, 0);
+        return { 
+            start: firstDay.toISOString().split('T')[0], 
+            end: lastDay.toISOString().split('T')[0] 
+        };
+    }
+
+    // ✨ 获取周一到周六的日期（周报用，6天）
+    function getWeekDaysOnly(start, end) {
+        const dates = [];
+        let c = new Date(start);
+        const endDate = new Date(end);
+        while(c <= endDate) {
+            const dayOfWeek = c.getDay(); // 0=周日, 1=周一, ..., 6=周六
+            if(dayOfWeek >= 1 && dayOfWeek <= 6) { // 周一到周六
+                dates.push(c.toISOString().split('T')[0]);
+            }
+            c.setDate(c.getDate() + 1);
+        }
+        return dates;
+    }
+
+    // ✨ 新增：获取月份范围内周一到周六的日期（排除周日）
+    function getMonthWeekdays(start, end) {
+        const dates = [];
+        let c = new Date(start);
+        const endDate = new Date(end);
+        while(c <= endDate) {
+            const dayOfWeek = c.getDay(); // 0=周日, 1-6=周一到周六
+            if(dayOfWeek >= 1 && dayOfWeek <= 6) { // 排除周日
+                dates.push(c.toISOString().split('T')[0]);
+            }
+            c.setDate(c.getDate() + 1);
+        }
+        return dates;
+    }
+
+    // ========== 同步状态管理 ==========
+    function updateSyncStatus(status, message) {
+        const statusEl = document.getElementById('syncStatus');
+        const dotEl = document.getElementById('syncDot');
+        const textEl = document.getElementById('syncText');
+        
+        statusEl.className = 'sync-status ' + status;
+        dotEl.className = 'sync-dot ' + status;
+        textEl.textContent = message;
+    }
+
+    async function manualSync() {
+        if(isSyncing) {
+            alert('正在同步中，请稍候...');
+            return;
+        }
+        
+        try {
+            updateSyncStatus('syncing', '正在同步...');
+            showLoading(true, '正在同步数据到云端...');
+            
+            localCache = null;
+            const data = await CloudStorage.read();
+            
+            lastSyncTime = new Date();
+            const timeStr = lastSyncTime.toLocaleTimeString('zh-CN');
+            updateSyncStatus('synced', `已同步 ${timeStr}`);
+            
+            const modeTag = document.getElementById('modeTag').innerText;
+            if(modeTag.includes('日报')) {
+                renderDay();
+            } else if(modeTag.includes('周报')) {
+                renderWeek();
+            } else {
+                renderMonth();
+            }
+            
+            showLoading(false);
+            alert('✅ 同步成功！数据已更新。');
+        } catch(error) {
+            console.error('手动同步失败:', error);
+            updateSyncStatus('error', '同步失败');
+            showLoading(false);
+            alert('❌ 同步失败，请检查网络连接。\n\n错误：' + error.message);
+        }
+    }
+
+    function showLoading(show, text = '正在同步数据...') {
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        loadingText.textContent = text;
+        if (show) {
+            loading.classList.add('show');
+        } else {
+            loading.classList.remove('show');
+        }
+    }
+
+    // ========== 云端同步核心函数 ==========
+        const CloudStorage = {
+        async read() {
+            if (localCache) return localCache;
+            try {
+                updateSyncStatus('syncing', '正在加载...');
+                
+                // 构建请求头
+                const headers = { 'Accept': 'application/json' };
+                if (CF_AUTH_TOKEN) {
+                    headers['Authorization'] = `Bearer ${CF_AUTH_TOKEN}`;
+                }
+
+                // 从 Worker 读取数据
+                const res = await fetch(`${CF_WORKER_URL}?key=${CF_DATA_KEY}`, {
+                    method: 'GET',
+                    headers: headers
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                // 解析返回的文本
+                const text = await res.text();
+                let content = {};
+                try {
+                    content = text ? JSON.parse(text) : {};
+                } catch (e) {
+                    console.warn("解析 JSON 失败，可能是空数据", e);
+                    content = {};
+                }
+
+                // 如果云端是空数据，则调用 create 初始化默认配置
+                if (Object.keys(content).length === 0) {
+                    return await this.create();
+                }
+
+                localCache = content;
+                
+                lastSyncTime = new Date();
+                const timeStr = lastSyncTime.toLocaleTimeString('zh-CN');
+                updateSyncStatus('synced', `已同步 ${timeStr}`);
+                return localCache;
+            } catch (e) {
+                console.error('读取失败:', e);
+                updateSyncStatus('error', '同步失败');
+                return localCache || {};
+            }
+        },
+        
+        async create() {
+            try {
+                // 初始化默认数据（保持你原有的逻辑）
+                const initialData = {};
+                initialData[CFG_KEY] = { pwd: "123456" }; 
+                
+                const headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+                if (CF_AUTH_TOKEN) {
+                    headers['Authorization'] = `Bearer ${CF_AUTH_TOKEN}`;
+                }
+
+                // 将初始数据写入 KV
+                await fetch(`${CF_WORKER_URL}?key=${CF_DATA_KEY}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(initialData)
+                });
+                
+                localCache = initialData;
+                return initialData;
+            } catch (e) {
+                console.error('创建失败:', e);
+                return {};
+            }
+        },
+        
+        async write(data) {
+            if (isSyncing) return;
+            isSyncing = true;
+            updateSyncStatus('syncing', '保存中...');
+            try {
+                const headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+                if (CF_AUTH_TOKEN) {
+                    headers['Authorization'] = `Bearer ${CF_AUTH_TOKEN}`;
+                }
+
+                // 将数据写入 KV
+                await fetch(`${CF_WORKER_URL}?key=${CF_DATA_KEY}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(data)
+                });
+                
+                localCache = data;
+                
+                lastSyncTime = new Date();
+                const timeStr = lastSyncTime.toLocaleTimeString('zh-CN');
+                updateSyncStatus('synced', `已同步 ${timeStr}`);
+            } catch (e) {
+                console.error('写入失败:', e);
+                updateSyncStatus('error', '保存失败');
+                alert('⚠️ 同步失败，数据可能未保存成功。请检查网络连接。');
+            } finally {
+                isSyncing = false;
+            }
+        }
+    };
+
+    // ========== 初始化 ==========
+    async function init() {
+        try {
+            let cfg = await CloudStorage.read();
+            if (!cfg[CFG_KEY]) {
+                cfg[CFG_KEY] = { pwd: "123456" };
+                await CloudStorage.write(cfg);
+            }
+        } catch(e) { 
+            console.error('初始化失败', e); 
+        }
+        
+        loadUIState();
+        document.querySelectorAll('.time-input, .backup-time').forEach(input => {
+            input.addEventListener('paste', handleTimePaste);
+        });
+        document.getElementById('configPop').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+        setInterval(tick, 1000);
+        renderDay();
+    }
+
+    function loadUIState() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('singleDate').value = localStorage.getItem('singleDate') || today;
+        
+        const ws = localStorage.getItem('weekStart');
+        const we = localStorage.getItem('weekEnd');
+        if(ws && we) {
+            document.getElementById('weekStart').value = ws;
+            document.getElementById('weekEnd').value = we;
+        } else {
+            const {monday, saturday} = getWeekRange();
+            document.getElementById('weekStart').value = monday;
+            document.getElementById('weekEnd').value = saturday;
+            localStorage.setItem('weekStart', monday);
+            localStorage.setItem('weekEnd', saturday);
+        }
+
+        const bt = localStorage.getItem('backupTimes');
+        if(bt) {
+            const t = JSON.parse(bt);
+            document.getElementById('t1').value = t.t1 || '';
+            document.getElementById('t2').value = t.t2 || '';
+            document.getElementById('t3').value = t.t3 || '';
+        } else {
+            document.getElementById('t1').value = '12:00';
+            document.getElementById('t2').value = '18:00';
+            document.getElementById('t3').value = '22:00';
+            localStorage.setItem('backupTimes', JSON.stringify({t1:'12:00',t2:'18:00',t3:'22:00'}));
+        }
+    }
+
+    function getWeekRange() {
+        const now = new Date();
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(now.setDate(diff));
+        const saturday = new Date(monday);
+        saturday.setDate(monday.getDate() + 5);
+        return { monday: monday.toISOString().split('T')[0], saturday: saturday.toISOString().split('T')[0] };
+    }
+
+    function saveSingleDate() {
+        localStorage.setItem('singleDate', document.getElementById('singleDate').value);
+        renderDay();
+    }
+    function saveWeekRange() {
+        const s = document.getElementById('weekStart').value;
+        const e = document.getElementById('weekEnd').value;
+        if(s && e) { localStorage.setItem('weekStart', s); localStorage.setItem('weekEnd', e); }
+    }
+    function saveBackupTimes() {
+        const t = { t1: document.getElementById('t1').value, t2: document.getElementById('t2').value, t3: document.getElementById('t3').value };
+        localStorage.setItem('backupTimes', JSON.stringify(t));
+    }
+    function clearBackupTimes() {
+        if(confirm('确定清空自动备份时间？')) {
+            document.getElementById('t1').value = '';
+            document.getElementById('t2').value = '';
+            document.getElementById('t3').value = '';
+            localStorage.setItem('backupTimes', JSON.stringify({t1:'',t2:'',t3:''}));
+            lastBackupTime = "";
+        }
+    }
+
+    function handleTimePaste(e) {
+        e.preventDefault();
+        const data = (e.clipboardData || window.clipboardData).getData('text');
+        const input = e.target;
+        const m = data.trim().match(/^(\d{1,2})[:：](\d{2})/);
+        if(m) {
+            let h = m[1].padStart(2,'0'), mi = m[2].padStart(2,'0');
+            if(parseInt(h)<24 && parseInt(mi)<60) {
+                input.value = `${h}:${mi}`;
+                input.classList.add('pasted');
+                setTimeout(()=>input.classList.remove('pasted'),300);
+                if(input.classList.contains('time-input')) {
+                    const row = input.closest('tr');
+                    if(row?.dataset.name) {
+                        const date = document.getElementById('singleDate').value;
+                        const idx = input.dataset.idx || Array.from(row.querySelectorAll('.time-input')).indexOf(input)+1;
+                        saveData(date, row.dataset.name, idx, input.value);
+                        calcRow(input);
+                    }
+                } else { saveBackupTimes(); }
+            } else { alert('时间无效'); }
+        } else { input.value = data; }
+    }
+
+    function tick() {
+        const n = new Date();
+        const timeStr = n.toTimeString().split(' ')[0];
+        const clockEl = document.getElementById('clockTime');
+        const dateEl = document.getElementById('clockDate');
+        if(clockEl) clockEl.innerText = timeStr;
+        if(dateEl) {
+            const w = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
+            dateEl.innerText = `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日 ${w[n.getDay()]}`;
+        }
+        
+        const hm = timeStr.slice(0,5);
+        const autos = [document.getElementById('t1').value, document.getElementById('t2').value, document.getElementById('t3').value].filter(v=>v);
+        if(autos.includes(hm) && lastBackupTime !== hm) {
+            lastBackupTime = hm;
+            exportData();
+        }
+    }
+
+    // ✨ 修改：mode切换函数（支持月报）
+    function changeMode(mode) {
+        const b1 = document.getElementById('btnDay'), b2 = document.getElementById('btnWeek'), b3 = document.getElementById('btnMonth'), t = document.getElementById('modeTag');
+        if(mode==='day') { 
+            b1.className='btn btn-primary'; b2.className='btn btn-outline'; b3.className='btn btn-outline'; 
+            t.innerHTML='<span>📅</span> 当前模式：日报录入'; 
+            renderDay(); 
+        }
+        else if(mode==='week') { 
+            b1.className='btn btn-outline'; b2.className='btn btn-primary'; b3.className='btn btn-outline'; 
+            t.innerHTML='<span>📊</span> 当前模式：周报统计'; 
+            renderWeek(); 
+        }
+        else if(mode==='month') { 
+            b1.className='btn btn-outline'; b2.className='btn btn-outline'; b3.className='btn btn-primary'; 
+            t.innerHTML='<span>📈</span> 当前模式：月报统计'; 
+            renderMonth(); 
+        }
+    }
+
+    // ✨ 新增：全员自动排序
+    async function sortAllRowsTimes() {
+        if(!confirm('确定将【所有人】的时间从早到晚自动排列吗？\n\n注意：这将覆盖当前的顺序。')) return;
+
+        const date = document.getElementById('singleDate').value;
+        showLoading(true, '正在全员排序并保存...');
+        
+        try {
+            let data = await CloudStorage.read();
+            const dayData = data[date] || {};
+            
+            names.forEach(name => {
+                const userData = dayData[name] || {};
+                let times = [];
+                
+                for(let i=1; i<=7; i++) {
+                    if(userData['t'+i]) times.push(userData['t'+i]);
+                }
+                
+                times.sort();
+                
+                if(!dayData[name]) dayData[name] = {};
+                
+                for(let i=1; i<=7; i++) delete dayData[name]['t'+i];
+                
+                for(let i=0; i<times.length; i++) {
+                    dayData[name]['t'+(i+1)] = times[i];
+                }
+            });
+            
+            if(!data[date]) data[date] = {};
+            
+            await CloudStorage.write(data);
+            renderDay();
+            alert('✅ 全员排序完成！');
+            
+        } catch(e) {
+            alert('排序失败：' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // 日报渲染
+    async function renderDay() {
+        const date = document.getElementById('singleDate').value;
+        const data = await CloudStorage.read();
+        const day = data[date] || {};
+        
+        let h = `<table><thead><tr><th style="width:120px">姓名</th>${[1,2,3,4,5,6,7].map(i=>`<th>T${i}</th>`).join('')}<th style="width:70px">数量</th><th style="width:80px">判定</th><th style="width:70px">扣分</th></tr></thead><tbody>`;
+        
+        names.forEach(n => {
+            const u = day[n] || {};
+            let cells = '', times = [], cnt = 0;
+            for(let i=1; i<=7; i++) {
+                const v = u['t'+i]||'';
+                cells += `<td><input type="time" class="time-input" data-idx="${i}" value="${v}" onchange="saveData('${date}','${n}',${i},this.value)" onblur="calcRow(this)"></td>`;
+                if(v) { cnt++; times.push(v); }
+            }
+            const st = getStatus(times);
+            const score = calcScore(times);
+            
+            h += `<tr data-name="${n}">
+                <td style="font-weight:600; color:var(--primary)">${n}</td>
+                ${cells}
+                <td class="count-cell" style="font-weight:bold">${cnt}</td>
+                <td><span class="status-badge ${st.class}">${st.text}</span></td>
+                <td class="score-cell ${score.class}">${score.text}</td>
+            </tr>`;
+        });
+        document.getElementById('tableContainer').innerHTML = h + '</tbody></table>';
+        document.querySelectorAll('.time-input').forEach(i=>i.addEventListener('paste', handleTimePaste));
+    }
+
+    async function saveData(date, name, idx, value) {
+        let data = await CloudStorage.read();
+        if(!data[date]) data[date] = {};
+        if(!data[date][name]) data[date][name] = {};
+        if(value) data[date][name]['t'+idx] = value;
+        else delete data[date][name]['t'+idx];
+        await CloudStorage.write(data);
+    }
+
+    function calcRow(input) {
+        const row = input.closest('tr'); if(!row) return;
+        const times = [], cnt = 0;
+        row.querySelectorAll('.time-input').forEach(i=>{ if(i.value) times.push(i.value); });
+        row.querySelector('.count-cell').innerText = times.length;
+        const st = getStatus(times);
+        const b = row.querySelector('.status-badge'); b.className = `status-badge ${st.class}`; b.innerText = st.text;
+        
+        const score = calcScore(times);
+        const scoreCell = row.querySelector('.score-cell');
+        if(scoreCell) {
+            scoreCell.className = `score-cell ${score.class}`;
+            scoreCell.innerText = score.text;
+        }
+    }
+
+    function getStatus(times) {
+        if(!times.length) return {text:'-',class:''};
+        const errs = [];
+        for(let i=0; i<times.length-1; i++) {
+            const t1 = parseInt(times[i].split(':')[0])*60 + parseInt(times[i].split(':')[1]);
+            const t2 = parseInt(times[i+1].split(':')[0])*60 + parseInt(times[i+1].split(':')[1]);
+            if(t2-t1<15) errs.push(`T${i+1}-T${i+2}`);
+        }
+        if(!errs.length) return {text:'正常',class:'status-ok'};
+        if(errs.length>=2) return {text:'多次异常',class:'status-err'};
+        return {text:`${errs[0]}异常`,class:'status-err'};
+    }
+
+    function timeToMin(t) {
+        if(!t || t === '-' || t === '') return 0;
+        try {
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+        } catch(e) {
+            return 0;
+        }
+    }
+
+    // ✨ 修改：周报渲染 - 改为6天（周一到周六），表头用日期
+    async function renderWeek() {
+        const s = document.getElementById('weekStart').value, e = document.getElementById('weekEnd').value;
+        if(!s||!e) return alert("请选择完整范围");
+        
+        // ✨ 只取周一到周六
+        const dates = getWeekDaysOnly(s, e);
+        if(dates.length === 0) return alert("所选范围内无工作日（周一到周六）");
+        
+        const data = await CloudStorage.read();
+        
+        let h = `<table><thead><tr><th style="width:120px;text-align:center">姓名</th>${dates.map(d=>`<th style="text-align:center;min-width:80px">${d.slice(5)}</th>`).join('')}<th style="width:90px;text-align:center">拜访数量</th><th style="width:90px;text-align:center">周状态</th><th style="width:70px;text-align:center">扣分</th></tr></thead><tbody>`;
+        
+        names.forEach(n => {
+            let tot=0, bad=0, has=false, totalScore=0;
+            const cells = dates.map(dt => {
+                const dayData = data[dt]?.[n] || {};
+                const times = Object.values(dayData).filter(v => v && v !== '-');
+                const cnt = times.length;
+                if(cnt>0) { has=true; tot+=cnt; if(cnt<5) bad++; }
+                
+                const missing = Math.max(0, 5 - cnt);
+                totalScore += missing * 2;
+                
+                return `<td style="text-align:center;color:${cnt?'var(--dark)':'#ccc'}">${cnt||'-'}</td>`;
+            }).join('');
+            
+            let st="-", cl="";
+            if(has) { 
+                if(bad>0){st=`有${bad}天未达标`;cl="status-warn";} 
+                else {st="完美达标";cl="status-ok";} 
+            }
+            
+            const scoreDisplay = totalScore > 0 ? `-${totalScore}` : '0';
+            const scoreClass = totalScore >= 6 ? 'score-high' : (totalScore > 0 ? 'score-low' : 'score-zero');
+            
+            h += `<tr>
+                <td style="font-weight:600; color:var(--primary); text-align:center">${n}</td>
+                ${cells}
+                <td style="font-weight:bold;color:var(--primary);text-align:center">${tot}</td>
+                <td style="text-align:center"><span class="status-badge ${cl}">${st}</span></td>
+                <td class="score-cell ${scoreClass}">${scoreDisplay}</td>
+            </tr>`;
+        });
+        document.getElementById('tableContainer').innerHTML = h+'</tbody></table>';
+    }
+
+    // ✨ 修改：月报渲染 - 排除周日，周日不参与判定
+    async function renderMonth() {
+        const s = document.getElementById('weekStart').value, e = document.getElementById('weekEnd').value;
+        if(!s||!e) return alert("请选择月份范围");
+        
+        // ✨ 月报：只取周一到周六，排除周日（周日不参与判定）
+        const dates = getMonthWeekdays(s, e);
+        if(dates.length === 0) return alert("所选范围内无工作日（周一到周六）");
+        
+        const data = await CloudStorage.read();
+        
+        let h = `<table><thead><tr><th style="width:120px;text-align:center">姓名</th>${dates.map(d=>`<th style="text-align:center;min-width:65px">${d.slice(5)}</th>`).join('')}<th style="width:90px;text-align:center">拜访数量</th><th style="width:90px;text-align:center">月状态</th><th style="width:70px;text-align:center">扣分</th></tr></thead><tbody>`;
+        
+        names.forEach(n => {
+            let tot=0, bad=0, has=false, totalScore=0;
+            const cells = dates.map(dt => {
+                const dayData = data[dt]?.[n] || {};
+                const times = Object.values(dayData).filter(v => v && v !== '-');
+                const cnt = times.length;
+                if(cnt>0) { has=true; tot+=cnt; if(cnt<5) bad++; }
+                
+                const missing = Math.max(0, 5 - cnt);
+                totalScore += missing * 2;
+                
+                return `<td style="text-align:center;color:${cnt?'var(--dark)':'#ccc'}">${cnt||'-'}</td>`;
+            }).join('');
+            
+            let st="-", cl="";
+            if(has) { 
+                if(bad>0){st=`有${bad}天未达标`;cl="status-warn";} 
+                else {st="完美达标";cl="status-ok";} 
+            }
+            
+            const scoreDisplay = totalScore > 0 ? `-${totalScore}` : '0';
+            const scoreClass = totalScore >= 6 ? 'score-high' : (totalScore > 0 ? 'score-low' : 'score-zero');
+            
+            h += `<tr>
+                <td style="font-weight:600; color:var(--primary); text-align:center">${n}</td>
+                ${cells}
+                <td style="font-weight:bold;color:var(--primary);text-align:center">${tot}</td>
+                <td style="text-align:center"><span class="status-badge ${cl}">${st}</span></td>
+                <td class="score-cell ${scoreClass}">${scoreDisplay}</td>
+            </tr>`;
+        });
+        document.getElementById('tableContainer').innerHTML = h+'</tbody></table>';
+    }
+
+    function exportCurrent() {
+        const modeTag = document.getElementById('modeTag').innerText;
+        if(modeTag.includes("日报")) exportDayExcel();
+        else if(modeTag.includes("周报")) exportWeekExcel();
+        else exportMonthExcel();
+    }
+    
+    // 日报导出
+    async function exportDayExcel() {
+        try {
+            console.log('开始导出日报...');
+            const date = document.getElementById('singleDate').value;
+            const data = await CloudStorage.read();
+            const day = (data && data[date]) ? data[date] : {};
+            
+            if(!day || Object.keys(day).length === 0) {
+                alert('⚠️ 当前日期无数据，无法导出！');
+                return;
+            }
+
+            const aoa = [];
+            aoa.push(['终端拜访数据智能管理日报']);
+            aoa.push([`查询日期：${date}`]);
+            aoa.push(['判定规则：15min内拜访两家以上视为异常 | 默认5个数据，少1个扣2分']);
+            aoa.push(['']);
+            
+            const headerRow = ['姓名'];
+            for(let i=1; i<=7; i++) headerRow.push(`T${i}`);
+            headerRow.push('数量', '判定', '扣分');
+            aoa.push(headerRow);
+            
+            names.forEach(name => {
+                const userData = day[name] || {};
+                const row = [name];
+                let count = 0;
+                const times = [];
+                
+                for(let i=1; i<=7; i++) {
+                    const val = userData['t'+i] || '-';
+                    row.push(val);
+                    if(val && val !== '-') {
+                        count++;
+                        times.push(val);
+                    }
+                }
+                
+                let status = '-';
+                if(times.length > 0) {
+                    let hasError = false;
+                    for(let i=0; i<times.length-1; i++) {
+                        const t1 = timeToMin(times[i]);
+                        const t2 = timeToMin(times[i+1]);
+                        if(t2 - t1 < 15) {
+                            hasError = true;
+                            status = `T${i+1}-T${i+2}异常`;
+                            break;
+                        }
+                    }
+                    if(!hasError) status = '正常';
+                }
+                
+                row.push(count, status);
+                
+                const score = calcScore(times);
+                row.push(score.text);
+                
+                aoa.push(row);
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            
+            ws['!cols'] = [
+                {wch: 15}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+                {wch: 8}, {wch: 15}, {wch: 8}
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws, "日报");
+            const filename = `终端拜访日报_${date}.xlsx`;
+            XLSX.writeFile(wb, filename);
+            
+            console.log('导出成功:', filename);
+            alert(`✅ 导出成功！\n文件：${filename}\n✨ 扣分列为数字格式，可直接SUM计算`);
+            
+        } catch(error) {
+            console.error('导出失败详细错误:', error);
+            alert('❌ 导出失败！\n\n错误信息：' + error.message + '\n\n请截图控制台(F12)发给我');
+        }
+    }
+    
+    // ✨ 修改：周报导出 - 表头改为日期，只保留周一到周六，"数量"改为"拜访数量"
+    async function exportWeekExcel() {
+        try {
+            const start = document.getElementById('weekStart').value;
+            const end = document.getElementById('weekEnd').value;
+            if(!start || !end) return alert("请选择完整范围");
+            
+            // ✨ 只取周一到周六
+            const dates = getWeekDaysOnly(start, end);
+            if(dates.length === 0) return alert("所选范围内无工作日（周一到周六）");
+            
+            const data = await CloudStorage.read();
+            const aoa = [];
+            
+            const fmtStart = start.replace(/-/g, '.');
+            const fmtEnd = end.replace(/-/g, '.');
+            aoa.push([`统计周期： ${fmtStart}至 ${fmtEnd}`]);
+            aoa.push(['终端拜访数据智能管理周报汇总（周一到周六）']);
+            aoa.push(['扣分规则：默认5个数据/天，少1个扣2分']);
+            aoa.push(['']);
+            
+            // ✨ 表头用日期，"数量"改为"拜访数量"
+            const finalHeader = ['姓名', ...dates.map(d => d.slice(5)), '拜访数量', '判定', '扣分'];
+            aoa.push(finalHeader);
+            
+            names.forEach(name => {
+                const row = [name];
+                let totalCount = 0;
+                let badDays = 0;
+                let hasData = false;
+                let totalScore = 0;
+                
+                dates.forEach(d => {
+                    const dayData = data[d]?.[name] || {};
+                    const times = Object.values(dayData).filter(v => v && v !== '-');
+                    const count = times.length;
+                    row.push(count);
+                    if(count > 0) {
+                        hasData = true;
+                        totalCount += count;
+                        if(count < 5) badDays++;
+                    }
+                    const missing = Math.max(0, 5 - count);
+                    totalScore += missing * 2;
+                });
+                
+                row.push(totalCount);
+                
+                let statusText = "-";
+                if(hasData) {
+                    if(badDays > 0) statusText = `有${badDays}天少于5家`;
+                    else statusText = "正常达标";
+                }
+                row.push(statusText);
+                
+                const scoreText = totalScore > 0 ? `-${totalScore}` : '0';
+                row.push(scoreText);
+                
+                aoa.push(row);
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            
+            // ✨ 动态设置列宽
+            const cols = [{wch: 12}];
+            dates.forEach(() => cols.push({wch: 8}));
+            cols.push({wch: 10}, {wch: 15}, {wch: 8});
+            ws['!cols'] = cols;
+            
+            XLSX.utils.book_append_sheet(wb, ws, "周报");
+            XLSX.writeFile(wb, `终端拜访周报_${start}_${end}.xlsx`);
+            alert('✅ 周报已导出！✨ 扣分列为数字格式，可直接SUM计算');
+        } catch(error) {
+            console.error('周报导出失败:', error);
+            alert('❌ 周报导出失败：' + error.message);
+        }
+    }
+
+    // ✨ 修改：月报导出 - 排除周日，周日不参与判定
+    async function exportMonthExcel() {
+        try {
+            const start = document.getElementById('weekStart').value;
+            const end = document.getElementById('weekEnd').value;
+            if(!start || !end) return alert("请选择月份范围");
+            
+            // ✨ 月报：只取周一到周六，排除周日（周日不参与判定）
+            const dates = getMonthWeekdays(start, end);
+            if(dates.length === 0) return alert("所选范围内无工作日（周一到周六）");
+            
+            const data = await CloudStorage.read();
+            const aoa = [];
+            
+            const fmtStart = start.replace(/-/g, '.');
+            const fmtEnd = end.replace(/-/g, '.');
+            aoa.push([`统计周期： ${fmtStart}至 ${fmtEnd}`]);
+            aoa.push(['终端拜访数据智能管理月报汇总（周一到周六）']);
+            aoa.push(['扣分规则：默认5个数据/天，少1个扣2分 | 周日不参与判定']);
+            aoa.push(['']);
+            
+            // ✨ 表头：姓名 + (日期 + 扣分) 对 + 拜访数量 + 月状态 + 总扣分
+            const headerRow1 = ['姓名'];
+            const headerRow2 = [''];
+            dates.forEach(d => {
+                headerRow1.push(d.slice(5), d.slice(5));
+                headerRow2.push('拜访数量', '扣分');
+            });
+            headerRow1.push('拜访数量', '月状态', '总扣分');
+            headerRow2.push('', '', '');
+            
+            aoa.push(headerRow1);
+            aoa.push(headerRow2);
+            
+            names.forEach(name => {
+                const row = [name];
+                let totalCount = 0;
+                let badDays = 0;
+                let hasData = false;
+                let totalScore = 0;
+                
+                dates.forEach(d => {
+                    const dayData = data[d]?.[name] || {};
+                    const times = Object.values(dayData).filter(v => v && v !== '-');
+                    const count = times.length;
+                    row.push(count);
+                    
+                    // ✨ 计算并添加每天扣分
+                    const dayScore = calcScore(times);
+                    row.push(dayScore.text);
+                    
+                    if(count > 0) {
+                        hasData = true;
+                        totalCount += count;
+                        if(count < 5) badDays++;
+                    }
+                    const missing = Math.max(0, 5 - count);
+                    totalScore += missing * 2;
+                });
+                
+                row.push(totalCount);
+                
+                let statusText = "-";
+                if(hasData) {
+                    if(badDays > 0) statusText = `有${badDays}天少于5家`;
+                    else statusText = "完美达标";
+                }
+                row.push(statusText);
+                
+                const scoreText = totalScore > 0 ? `-${totalScore}` : '0';
+                row.push(scoreText);
+                
+                aoa.push(row);
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            
+            // ✨ 动态设置列宽
+            const cols = [{wch: 12}];
+            dates.forEach(() => {
+                cols.push({wch: 8}, {wch: 8});
+            });
+            cols.push({wch: 10}, {wch: 15}, {wch: 10});
+            ws['!cols'] = cols;
+            
+            XLSX.utils.book_append_sheet(wb, ws, "月报");
+            XLSX.writeFile(wb, `终端拜访月报_${start}_${end}.xlsx`);
+            alert('✅ 月报已导出！✨ 已排除周日，仅统计周一到周六');
+        } catch(error) {
+            console.error('月报导出失败:', error);
+            alert('❌ 月报导出失败：' + error.message);
+        }
+    }
+
+    async function exportData() {
+        const d = await CloudStorage.read();
+        if(!d || !Object.keys(d).length) return alert("暂无数据");
+        const b = new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(b);
+        a.download=`云备份_${new Date().toISOString().slice(0,10)}.json`; a.click();
+        alert("✅ 本地备份已下载，请妥善保存！");
+    }
+    
+    async function importJSON(input) {
+        const f = input.files[0]; if(!f) return;
+        const r = new FileReader();
+        r.onload = async e => {
+            try {
+                const d = JSON.parse(e.target.result);
+                await CloudStorage.write(d);
+                alert("✅ 数据已恢复至云端！"); location.reload();
+            } catch(err) { alert("❌ 文件格式错误"); }
+        }; r.readAsText(f);
+    }
+
+    function openConfig() {
+        document.getElementById('overlay').style.display='block';
+        document.getElementById('configPop').style.display='block';
+        document.getElementById('setPwd').value='';
+        setTimeout(()=>document.getElementById('setPwd').focus(),100);
+    }
+    function closeConfig() {
+        document.getElementById('overlay').style.display='none';
+        document.getElementById('configPop').style.display='none';
+    }
+    async function saveConfig() {
+        const p = document.getElementById('setPwd').value;
+        if(p.length<4) return alert("⚠️ 密码至少4位");
+        let d = await CloudStorage.read();
+        d[CFG_KEY] = {pwd:p};
+        await CloudStorage.write(d);
+        alert("✅ 密码已更新"); closeConfig();
+    }
+    async function secureReset() {
+        const d = await CloudStorage.read();
+        const cfg = d[CFG_KEY] || {pwd:"123456"};
+        const inp = prompt("🔐 输入管理密码确认清空：");
+        if(inp !== cfg.pwd) return alert("❌ 密码错误");
+        if(confirm("✅ 确定：仅清空业务数据\n❌ 取消：清空所有数据（含密码）")) {
+            d = {[CFG_KEY]: cfg};
+        } else {
+            d = {[CFG_KEY]: {pwd:"123456"}};
+            localStorage.clear();
+        }
+        await CloudStorage.write(d);
+        alert("✅ 云端数据已清空"); location.reload();
+    }
+
+    init();
+</script>
+</body>
+</html>
